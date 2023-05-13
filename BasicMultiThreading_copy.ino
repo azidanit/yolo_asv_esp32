@@ -39,8 +39,8 @@ Servo motorRight;
 #define motorLeftPin 26
 #define motorRightPin 25
 
-int minUs = 1000;
-int maxUs = 2000;
+int minUs = 450;
+int maxUs = 2550;
 
 ESP32PWM pwm;
 
@@ -48,8 +48,10 @@ ESP32PWM pwm;
 void TaskBlink( void *pvParameters );
 void TaskAnalogRead( void *pvParameters );
 void TaskRecieveUDP(void *pvParameters);
+void TaskDriveMotor(void *pvParameters);
 TaskHandle_t analog_read_task_handle; // You can (don't have to) use this to be able to manipulate a task from somewhere else.
 TaskHandle_t udp_read_task_handle; // You can (don't have to) use this to be able to manipulate a task from somewhere else.
+TaskHandle_t drive_motor_task_handle; // You can (don't have to) use this to be able to manipulate a task from somewhere else.
 
 void IRAM_ATTR pulseTimer(short idx) {
   currentTimeRC[idx] = micros();
@@ -90,7 +92,7 @@ void setup() {
 	ESP32PWM::allocateTimer(1);
 
   motorLeft.attach(motorLeftPin, minUs, maxUs);
-	motorRight.attach(motorLeftPin, minUs, maxUs);
+	motorRight.attach(motorRightPin, minUs, maxUs);
   
   // Initialize serial communication at 115200 bits per second:
   Ethernet.init(5);
@@ -116,13 +118,22 @@ void setup() {
   Udp.begin(localPort);
   // Now the task scheduler, which takes over control of scheduling individual tasks, is automatically started.
 
-    xTaskCreate(
+  xTaskCreate(
     TaskBlink
     ,  "Task Blink" // A name just for humans
     ,  2048        // The stack size can be checked by calling `uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);`
     ,  (void*) &blink_delay // Task parameter which can modify the task behavior. This must be passed as pointer to void.
     ,  2  // Priority
     ,  NULL // Task handle is not used here - simply pass NULL
+    );
+
+  xTaskCreate(
+    TaskDriveMotor
+    ,  "Task Drive Motor" // A name just for humans
+    ,  1024        // The stack size can be checked by calling `uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);`
+    ,  NULL // Task parameter which can modify the task behavior. This must be passed as pointer to void.
+    ,  2  // Priority
+    ,  &drive_motor_task_handle // Task handle is not used here - simply pass NULL
     );
 
   // This variant of task creation can also specify on which core it will be run (only relevant for multi-core ESPs)
@@ -175,23 +186,33 @@ void TaskBlink(void *pvParameters){  // This is a task.
   }
 }
 
+void TaskDriveMotor(void *pvParameters){ 
+  (void) pvParameters;
+
+  for (;;){
+    motorLeft.writeMicroseconds(RCValue[0]);
+    motorRight.writeMicroseconds(RCValue[1]);
+    delay(10);
+  }
+}
+
 void TaskAnalogRead(void *pvParameters){  // This is a task.
   (void) pvParameters;
 
   for (;;){
-    if (pulseRC[0] < 3000){
+    if (pulseRC[0] <= maxUs && pulseRC[0] >= minUs){
       RCValue[0] = pulseRC[0];
     }
 
-    if (pulseRC[1] < 3000){
+    if (pulseRC[1] <= maxUs && pulseRC[1] >= minUs){
       RCValue[1] = pulseRC[1];
     }
 
-    if (pulseRC[2] < 3000){
+    if (pulseRC[2] <= maxUs && pulseRC[2] >= minUs){
       RCValue[2] = pulseRC[2];
     }
 
-    if (pulseRC[3] < 3000){
+    if (pulseRC[3] <= maxUs && pulseRC[3] >= minUs){
       RCValue[3] = pulseRC[3];
     }
 
@@ -206,23 +227,8 @@ void TaskRecieveUDP(void *pvParameters){  // This is a task.
   for (;;){
     int packetSize = Udp.parsePacket();
     if (packetSize) {
-      // Serial.print("Received packet of size ");
-      // Serial.println(packetSize);
-      // Serial.print("From ");
       IPAddress remote = Udp.remoteIP();
-      // for (int i=0; i < 4; i++) {
-      //   Serial.print(remote[i], DEC);
-      //   if (i < 3) {
-      //     Serial.print(".");
-      //   }
-      // }
-      // Serial.print(", port ");
-      // Serial.println(Udp.remotePort());
-
-      // read the packet into packetBuffer
       Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
-      // Serial.println("Contents:");
-      // Serial.println(packetBuffer);
 
       // send a reply to the IP address and port that sent us the packet we received
       Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
