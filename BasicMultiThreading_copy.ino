@@ -28,6 +28,8 @@ char recBuffer[100];
 
 EthernetUDP Udp;
 
+short PcMotorValue[2] = {1500,1500};
+
 short RCPin[4] = {34,35,32,33};
 short RCValue[4] = {1500,1500,1500,1500};
 volatile long startTimeRC[4] = {0,0,0,0};
@@ -216,7 +218,7 @@ void TaskAnalogRead(void *pvParameters){  // This is a task.
       RCValue[3] = pulseRC[3];
     }
 
-    Serial.printf("0: %d   1: %d   2: %d   3: %d\n", RCValue[0], RCValue[1], RCValue[2], RCValue[3]);
+    Serial.printf("0: %d   1: %d   2: %d   3: %d  ||  PC1: %d   PC2: %d\n", RCValue[0], RCValue[1], RCValue[2], RCValue[3], PcMotorValue[0], PcMotorValue[1]);
     delay(50);
   }
 }
@@ -229,7 +231,13 @@ void TaskRecieveUDP(void *pvParameters){  // This is a task.
     if (packetSize) {
       IPAddress remote = Udp.remoteIP();
       Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
-
+      if (packetBuffer[0] == 'i' && 
+        packetBuffer[1] == 't' &&
+        packetBuffer[2] == 's'
+      ){
+        memcpy(&PcMotorValue[0],packetBuffer+3,2);
+        memcpy(&PcMotorValue[1],packetBuffer+5,2);
+      }
       // send a reply to the IP address and port that sent us the packet we received
       Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
       Udp.write(ReplyBuffer);
