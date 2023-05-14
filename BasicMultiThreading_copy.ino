@@ -192,8 +192,8 @@ void TaskDriveMotor(void *pvParameters){
   (void) pvParameters;
 
   for (;;){
-    motorLeft.writeMicroseconds(RCValue[0]);
-    motorRight.writeMicroseconds(RCValue[1]);
+    motorLeft.writeMicroseconds(PcMotorValue[0]);
+    motorRight.writeMicroseconds(PcMotorValue[1]);
     delay(10);
   }
 }
@@ -226,6 +226,8 @@ void TaskAnalogRead(void *pvParameters){  // This is a task.
 void TaskRecieveUDP(void *pvParameters){  // This is a task.
   (void) pvParameters;
 
+  int error_counter = 0;
+
   for (;;){
     int packetSize = Udp.parsePacket();
     if (packetSize) {
@@ -237,11 +239,19 @@ void TaskRecieveUDP(void *pvParameters){  // This is a task.
       ){
         memcpy(&PcMotorValue[0],packetBuffer+3,2);
         memcpy(&PcMotorValue[1],packetBuffer+5,2);
+        error_counter = 0;
       }
       // send a reply to the IP address and port that sent us the packet we received
       Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
       Udp.write(ReplyBuffer);
       Udp.endPacket();
+    } else {
+      error_counter++;
+    }
+
+    if (error_counter >= 1000){
+      PcMotorValue[0] = 1500;
+      PcMotorValue[1] = 1500;
     }
     delay(1);
   }
