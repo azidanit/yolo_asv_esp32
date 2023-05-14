@@ -1,6 +1,7 @@
 #include <Ethernet.h>
 #include <EthernetUdp.h>
 #include <ESP32Servo.h>
+#include <FastLED.h>
 
 #if CONFIG_FREERTOS_UNICORE
 #define ARDUINO_RUNNING_CORE 0
@@ -13,6 +14,9 @@
 #ifndef LED_BUILTIN
   #define LED_BUILTIN 2 // Specify the on which is your LED
 #endif
+
+#define NUM_LEDS 5
+CRGBArray<NUM_LEDS> leds;
 
 byte mac[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
@@ -41,8 +45,8 @@ Servo motorRight;
 #define motorLeftPin 26
 #define motorRightPin 25
 
-int minUs = 450;
-int maxUs = 2550;
+short minUs = 900;
+short maxUs = 2200;
 
 ESP32PWM pwm;
 
@@ -103,6 +107,7 @@ void setup() {
   Serial.begin(9600);
   // Set up two tasks to run independently.
   uint32_t blink_delay = 1000; // Delay between changing state on LED pin
+  FastLED.addLeds<NEOPIXEL,17>(leds, NUM_LEDS);
 
   Serial.printf("Basic Multi Threading Arduino Example\n");
 
@@ -182,9 +187,15 @@ void TaskBlink(void *pvParameters){  // This is a task.
     digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
     // arduino-esp32 has FreeRTOS configured to have a tick-rate of 1000Hz and portTICK_PERIOD_MS
     // refers to how many milliseconds the period between each ticks is, ie. 1ms.
-    delay(blink_delay);
+    delay(50);
     digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
-    delay(blink_delay);
+    delay(50);
+    leds[0] = CHSV(map(RCValue[0], minUs, maxUs, 0, 255),255,110);
+    leds[1] = CHSV(map(RCValue[1], minUs, maxUs, 0, 255),255,110);
+    leds[2] = CHSV(map(PcMotorValue[0], minUs, maxUs, 0, 255),255,110);
+    leds[3] = CHSV(map(PcMotorValue[1], minUs, maxUs, 0, 255),255,110);
+    leds[4] = CRGB(0,255,0);
+    FastLED.delay(33);
   }
 }
 
