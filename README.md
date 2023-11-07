@@ -1,6 +1,12 @@
 # yolo_asv_esp32
 Simple MultiTask with FREERTOS - Arduino
 
+Feature:
+- UDP Communication
+- PWM in for RC Controller
+- PWM out to Drive Motor ESC
+- Addresable RGB LED for indicator
+
 ## Wiring
 ### Ethernet
 | ESP32                              | W5500 |
@@ -24,3 +30,7 @@ Simple MultiTask with FREERTOS - Arduino
 |-------|-------------|
 | 26    | Motor Left  |
 | 25    | Motor Right |
+### Addressable RGB Output 
+| ESP32 | Channel     |
+|-------|-------------|
+| 17    | ARGB Data  |
